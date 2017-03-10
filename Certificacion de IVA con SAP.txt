@@ -1,0 +1,75 @@
+SELECT
+        TRN.ID_STR_RT CODIGO,
+        PA.NM_LOC FARMACIA,
+        TRN.DC_DY_BSN FECHA,
+        CASE WHEN
+            SLS_TX.PE_TX IS NULL
+        THEN
+            0
+        ELSE
+            SLS_TX.PE_TX
+        END IVA,
+        SUBSTR(SLS.ID_MRHRC_GP,3,2) CATEGORIA,
+        /*CASE WHEN
+            SLS.MO_EXTN_LN_ITM_RTN < 0
+        THEN
+            'NC'
+        ELSE
+            'FC'
+        END TIPO_DOC,--*/
+        SUM(SLS.MO_EXTN_LN_ITM_RTN + SLS.MO_VAT_LN_ITM_RTN) - SUM(SLS.MO_EXTN_LN_ITM_RTN - SLS.MO_EXTN_DSC_LN_ITM) MO_TOTAL,
+        SUM(DECODE(SLS.ID_GP_TX,990,SLS.MO_EXTN_LN_ITM_RTN,0) ) - SUM(DECODE(SLS.ID_GP_TX,990,SLS.MO_EXTN_LN_ITM_RTN - SLS.MO_EXTN_DSC_LN_ITM, 0) ) BASE_EXENTA,
+        SUM(DECODE(SLS.ID_GP_TX,992,SLS.MO_EXTN_LN_ITM_RTN,0) ) - SUM(DECODE(SLS.ID_GP_TX,992,SLS.MO_EXTN_LN_ITM_RTN - SLS.MO_EXTN_DSC_LN_ITM, 0) ) BASE_GRAVABLE,
+        SUM(SLS.MO_VAT_LN_ITM_RTN) IMPUESTO
+      FROM  FAO_TR_RTL FAO
+        INNER JOIN  PA_STR_RTL PA
+        ON (FAO.ID_STR_RT = PA.ID_STR_RT)
+        INNER JOIN  TR_TRN TRN
+        ON (TRN.ID_STR_RT = FAO.ID_STR_RT
+            AND TRN.ID_WS = FAO.ID_WS
+            AND TRN.DC_DY_BSN = FAO.DC_DY_BSN
+            AND TRN.AI_TRN = FAO.AI_TRN)
+        INNER JOIN  TR_RTL RTL
+        ON (TRN.ID_STR_RT = RTL.ID_STR_RT
+            AND TRN.ID_WS = RTL.ID_WS
+            AND TRN.DC_DY_BSN = RTL.DC_DY_BSN
+            AND TRN.AI_TRN = RTL.AI_TRN)
+        INNER JOIN  TR_LTM_SLS_RTN SLS
+        ON (SLS.ID_STR_RT = FAO.ID_STR_RT
+            AND SLS.ID_WS = FAO.ID_WS
+            AND SLS.DC_DY_BSN = FAO.DC_DY_BSN
+            AND SLS.AI_TRN = FAO.AI_TRN)
+        LEFT JOIN TR_LTM_SLS_RTN_TX SLS_TX
+        ON (SLS_TX.ID_STR_RT = SLS.ID_STR_RT
+            AND SLS_TX.ID_WS = SLS.ID_WS
+            AND SLS_TX.DC_DY_BSN = SLS.DC_DY_BSN
+            AND SLS_TX.AI_TRN = SLS.AI_TRN
+            AND SLS_TX.AI_LN_ITM = SLS.AI_LN_ITM)
+      WHERE FAO.DC_DY_BSN = '2017-01-31'
+      --AND FAO.DC_DY_BSN <= '2017-02-01'
+      --AND TRN.ID_STR_RT= 01036
+      AND TRN.SC_TRN = 2
+      AND SLS.ID_ITM NOT IN (500001,500002,500003,500068)
+      AND SLS.FL_VD_LN_ITM = 0
+      AND FAO.AGREEMENT_ID IS NULL
+      AND FAO.IS_CONVENIO = 0
+      GROUP BY
+        TRN.ID_STR_RT,
+        PA.NM_LOC,
+        TRN.DC_DY_BSN,
+        CASE WHEN
+            SLS_TX.PE_TX IS NULL
+        THEN
+            0
+        ELSE
+            SLS_TX.PE_TX
+        END, 
+        SUBSTR(SLS.ID_MRHRC_GP,3,2)
+        /*CASE WHEN
+            SLS.MO_EXTN_LN_ITM_RTN < 0
+        THEN
+            'NC'
+        ELSE
+            'FC'
+        END*/
+ORDER BY 1,3,4,5,6;
